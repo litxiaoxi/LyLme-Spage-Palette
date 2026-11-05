@@ -1,18 +1,65 @@
 <?php
-function isInternalUrl($url, $currentDomain) {
+/**
+ * 外链安全提醒页
+ *
+ * 站内链接直接跳转；站外链接显示倒计时确认页。
+ * 兼容 PHP 5.4+：不使用 ??、短数组等 PHP 7+ 语法。
+ */
+function isInternalUrl($url, $currentHost)
+{
     $parsedUrl = parse_url($url);
-    $host = $parsedUrl['host'] ?? '';
-    return strpos($host, $currentDomain) !== false;
+    if (!is_array($parsedUrl) || empty($parsedUrl['host'])) {
+        return false;
+    }
+    $host = strtolower($parsedUrl['host']);
+    $currentHost = strtolower($currentHost);
+    if ($currentHost === '') {
+        return false;
+    }
+    if ($host === $currentHost) {
+        return true;
+    }
+    return substr($host, -strlen('.' . $currentHost)) === '.' . $currentHost;
 }
-$currentDomain = $_SERVER['HTTP_HOST'];
-if (isset($_GET['url']) && !empty($_GET['url'])) {
-    $targetUrl = $_GET['url'];
-    if (filter_var($targetUrl, FILTER_VALIDATE_URL)) {
-        if (isInternalUrl($targetUrl, $currentDomain)) {
-            header('Location: ' . $targetUrl);
-            exit;
-        } else {
-            ?>
+
+$currentHost = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+$currentHost = preg_replace('/:\d+$/', '', $currentHost);
+
+if (!isset($_GET['url']) || empty($_GET['url'])) {
+    http_response_code(400);
+    echo '缺少url参数';
+    exit;
+}
+
+$targetUrl = $_GET['url'];
+
+if (!filter_var($targetUrl, FILTER_VALIDATE_URL)) {
+    http_response_code(400);
+    echo '无效的URL';
+    exit;
+}
+
+$scheme = strtolower((string) parse_url($targetUrl, PHP_URL_SCHEME));
+if ($scheme !== 'http' && $scheme !== 'https') {
+    http_response_code(400);
+    echo '无效的URL';
+    exit;
+}
+
+// 防止响应头注入
+$targetUrl = str_replace(array("\r", "\n"), '', $targetUrl);
+
+if (isInternalUrl($targetUrl, $currentHost)) {
+    header('Location: ' . $targetUrl);
+    exit;
+}
+
+$safeUrl = htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8');
+$jsUrl = json_encode($targetUrl, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+if ($jsUrl === false) {
+    $jsUrl = '""';
+}
+?>
 <!DOCTYPE html>
 <html>
   <head>
@@ -53,7 +100,7 @@ a{text-decoration:none;}
           <span>
             <div style="font-weight: bold; padding-bottom: 8px">即将跳转到外部网站，安全性未知，是否继续？</div>
             您将要访问的链接不属于本网站，请注意您的账号和财产安全。<br />
-            前往：<a class="urlColor"><?php echo htmlspecialchars($targetUrl); ?></a>
+            前往：<a class="urlColor"><?php echo $safeUrl; ?></a>
           </span>
         </div>
         <div class="btn">
@@ -62,7 +109,7 @@ a{text-decoration:none;}
             <script>
                 var countdownNumber = 10;
                 var countdownElement = document.getElementById('countdown');
-                var redirectUrl = '<?php echo htmlspecialchars($targetUrl); ?>';
+                var redirectUrl = <?php echo $jsUrl; ?>;
                 var countdownInterval = setInterval(function() {
                     countdownNumber--;
                     countdownElement.textContent = countdownNumber + '秒后自动跳转...';
@@ -81,15 +128,3 @@ a{text-decoration:none;}
     </div>
   </body>
 </html>
-<?php
-    exit;
-        }
-    } else {
-        http_response_code(400);
-        echo '无效的URL';
-    }
-} else {
-    http_response_code(400);
-    echo '缺少url参数';
-}
-?>

@@ -1,39 +1,27 @@
+    <?php
+    // 各读一次，避免 theme_config() 在未保存主题设置时重复 include config.php
+    $palette_gonganbei = trim((string) theme_config('gonganbei', ''));
+    $palette_background_video = (string) theme_config('background_video', '');
+    ?>
     <!-- 底部信息 -->
     <footer class="site-footer">
         <div class="footer-content">
-            <?php if (!empty(theme_config('gonganbei', ""))) : ?>
-                <?php preg_match_all('/\d+/', theme_config('gonganbei'), $gab); ?>
-                <span class="footer-item">
-                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=<?php echo $gab[0][0]; ?>" target="_blank" rel="nofollow noopener" class="footer-link">
-                        <img src="/assets/img/icp.png" alt="公安网备" width="14" height="14" style="vertical-align:middle">
-                        <?php echo theme_config('gonganbei'); ?>
-                    </a>
-                </span>
+            <?php if ($palette_gonganbei !== '') : ?>
+                <span class="footer-item"><?php theme_security_filing('gonganbei', $palette_gonganbei); ?></span>
             <?php endif; ?>
-            <?php if ($conf['icp'] != null) : ?>
-                <span class="footer-item">
-                    <a href="http://beian.miit.gov.cn/" target="_blank" class="footer-link"><?php echo $conf['icp']; ?></a>
-                </span>
+            <?php if (!empty($conf['icp'])) : ?>
+                <span class="footer-item"><?php theme_icp(); ?></span>
             <?php endif; ?>
-            <span class="footer-item"><?php echo $conf['copyright']; ?></span>
-            <?php if ($conf['wztj'] != null) : ?>
-                <span class="footer-item"><?php echo $conf["wztj"]; ?></span>
-            <?php endif; ?>
+            <span class="footer-item"><?php echo isset($conf['copyright']) ? $conf['copyright'] : ''; ?></span>
         </div>
     </footer>
 
     <script>
-        var backgroundimg = "url(<?php echo background(); ?>)";
-        var background_video = "<?php echo theme_config('background_video'); ?>";
+        var background_url = <?php echo json_encode((string) background(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        var background_video_url = <?php echo json_encode($palette_background_video, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     </script>
-    <script src="<?php echo $cdnpublic ?>/assets/js/jquery.min.js"></script>
-    <script src="<?php echo $templatepath; ?>/js/script.js"></script>
-    <script src="<?php echo $templatepath; ?>/js/tool.js"></script>
-    <script>
-        function solist() {
-            return <?php echo $json ?>;
-        }
-    </script>
-</div>
+    <?php theme_icon_scripts(); ?>
+    <?php echo isset($conf['wztj']) ? $conf['wztj'] : ''; ?>
 </body>
+
 </html>
