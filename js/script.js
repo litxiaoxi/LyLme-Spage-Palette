@@ -41,18 +41,6 @@
         return value < 10 ? '0' + value : '' + value;
     }
 
-    function closestByClass(element, className) {
-        var node = element;
-        while (node && node.nodeType === 1) {
-            var cls = node.getAttribute ? node.getAttribute('class') : '';
-            if (cls && (' ' + cls + ' ').indexOf(' ' + className + ' ') !== -1) {
-                return node;
-            }
-            node = node.parentNode;
-        }
-        return null;
-    }
-
     function containsColor(color) {
         for (var i = 0; i < colors.length; i++) {
             if (colors[i] === color) {
@@ -179,6 +167,11 @@
         video.autoplay = true;
         video.playsInline = true;
         video.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-3;pointer-events:none;';
+        // 视频地址失效、跨域被拒或浏览器不支持编码时回退到无背景，
+        // 同时把偏好写回 none，否则每次刷新都会重试失败视频、切换按钮也看似无效
+        video.addEventListener('error', function () {
+            clearBackground();
+        });
         document.body.appendChild(video);
         return true;
     }
@@ -192,29 +185,42 @@
         removeVideoBackground();
     }
 
+    // 后台是否配置了视频背景地址
+    function hasVideoBackground() {
+        return !!(window.background_video_url && String(window.background_video_url));
+    }
+
     function restoreBackground() {
         var saved = storageGet(BG_KEY);
-        if (saved === 'image') {
-            setImageBackground();
-        } else if (saved === 'video') {
+        // 首次访问（无保存值）不显示图片/视频背景，仅保留主题渐变
+        if (saved === 'video') {
             if (!setVideoBackground()) {
-                setImageBackground();
+                clearBackground();
             }
+        } else if (saved === 'image') {
+            // 配置了视频地址后图片背景不再参与切换，历史偏好清零
+            if (!hasVideoBackground() && setImageBackground()) {
+                return;
+            }
+            clearBackground();
         }
     }
 
     function cycleBackground() {
         var current = storageGet(BG_KEY);
-        if (!current || current === 'none') {
-            if (!setImageBackground()) {
+        // 配置了视频地址：只切换 视频 / 无背景；未配置：只切换 图片 / 无背景
+        if (hasVideoBackground()) {
+            if (current === 'video') {
+                clearBackground();
+            } else {
                 setVideoBackground();
             }
-        } else if (current === 'image') {
-            if (!setVideoBackground()) {
-                clearBackground();
-            }
-        } else if (current === 'video') {
+            return;
+        }
+        if (current === 'image') {
             clearBackground();
+        } else {
+            setImageBackground();
         }
     }
 
@@ -265,12 +271,18 @@
         }
         suggestScript = null;
         if (suggestCallbackName) {
-            try {
-                delete window[suggestCallbackName];
-            } catch (e) {
-                window[suggestCallbackName] = undefined;
-            }
+            var name = suggestCallbackName;
             suggestCallbackName = null;
+            // 已发起但尚未执行的 JSONP 仍可能回调，先替换为空函数再延迟删除，
+            // 避免控制台出现 “paletteSuggest... is not defined”
+            window[name] = function () {};
+            setTimeout(function () {
+                try {
+                    delete window[name];
+                } catch (e) {
+                    window[name] = undefined;
+                }
+            }, 10000);
         }
     }
 
@@ -399,19 +411,28 @@
         cleanupSuggestion();
 
         var callbackName = 'paletteSuggest' + (new Date().getTime()) + Math.floor(Math.random() * 1000);
-        suggestCallbackName = callbackName;
+        var script = document.createElement('script');
 
         window[callbackName] = function (data) {
+            // 已被后续请求取代时丢弃迟到的结果
+            if (suggestCallbackName !== callbackName) {
+                return;
+            }
             cleanupSuggestion();
             renderSuggestions(data);
         };
 
-        var script = document.createElement('script');
         script.src = 'https://suggestion.baidu.com/su?wd=' + encodeURIComponent(keyword) + '&cb=' + callbackName;
         script.onerror = function () {
+            // 只清理本次请求，避免误删已被后续请求替换的 script
+            if (suggestScript !== script) {
+                return;
+            }
             cleanupSuggestion();
             hideSuggestions();
         };
+
+        suggestCallbackName = callbackName;
         suggestScript = script;
         document.body.appendChild(script);
     }
@@ -441,16 +462,11 @@
                 // 点击选项时不触发 document 的“点击外部关闭”
                 e.stopPropagation();
 
-                var option = closestByClass(e.target, 'engine-option');
-                if (!option) {
+                if (!e.target.closest('.engine-option')) {
                     return;
                 }
-                var input = option.querySelector ? option.querySelector('input[name="sou"]') : null;
-                if (input) {
-                    input.checked = true;
-                    storageSet(SOU_KEY, input.getAttribute('data-alias') || '');
-                    updateEngineUI();
-                }
+                // 选中状态、偏好写入与 UI 刷新统一交给 radio 的 change 事件，
+                // 这里只负责关闭菜单（含重复点击已选中项的场景）
                 setEngineMenu(false);
             });
 
@@ -659,17 +675,18 @@
         }
 
         document.addEventListener('click', function (e) {
-            if (!closestByClass(e.target, 'search-engine-switcher') && !closestByClass(e.target, 'engine-options')) {
+            var target = e.target;
+            if (!target.closest('.search-engine-switcher') && !target.closest('.engine-options')) {
                 setEngineMenu(false);
             }
 
-            var colorOpt = closestByClass(e.target, 'color-opt');
+            var colorOpt = target.closest('.color-opt');
             if (colorOpt) {
                 setColor(colorOpt.getAttribute('data-color'));
                 return;
             }
 
-            if (!closestByClass(e.target, 'search-area')) {
+            if (!target.closest('.search-area')) {
                 clearSuggestions();
             }
         });

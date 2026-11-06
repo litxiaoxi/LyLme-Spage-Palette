@@ -5,61 +5,70 @@
  * 站内链接直接跳转；站外链接显示倒计时确认页。
  * 兼容 PHP 5.4+：不使用 ??、短数组等 PHP 7+ 语法。
  */
-function isInternalUrl($url, $currentHost)
-{
-    $parsedUrl = parse_url($url);
-    if (!is_array($parsedUrl) || empty($parsedUrl['host'])) {
-        return false;
+// function_exists 守卫：核心后续接入 go.php，或本文件被重复 include 时，
+// 避免触发 Cannot redeclare 致命错误（见主题开发规范「排查须知」）。
+if (!function_exists('isInternalUrl')) {
+    function isInternalUrl($url, $currentHost)
+    {
+        $parsedUrl = parse_url($url);
+        if (!is_array($parsedUrl) || empty($parsedUrl['host'])) {
+            return false;
+        }
+        $host = strtolower($parsedUrl['host']);
+        $currentHost = strtolower($currentHost);
+        if ($currentHost === '') {
+            return false;
+        }
+        if ($host === $currentHost) {
+            return true;
+        }
+        return substr($host, -strlen('.' . $currentHost)) === '.' . $currentHost;
     }
-    $host = strtolower($parsedUrl['host']);
-    $currentHost = strtolower($currentHost);
-    if ($currentHost === '') {
-        return false;
+}
+
+// 入口逻辑同样只执行一次：文件被重复 include 时，第二次不应再输出提醒页，
+// 也不应重复发送 Location / 400 响应（会触发 headers already sent 警告）。
+if (!defined('LYLME_GO_ENTRY_DONE')) {
+    define('LYLME_GO_ENTRY_DONE', true);
+
+    $currentHost = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+    $currentHost = preg_replace('/:\d+$/', '', $currentHost);
+
+    if (!isset($_GET['url']) || empty($_GET['url'])) {
+        http_response_code(400);
+        echo '缺少url参数';
+        exit;
     }
-    if ($host === $currentHost) {
-        return true;
+
+    $targetUrl = $_GET['url'];
+
+    if (!filter_var($targetUrl, FILTER_VALIDATE_URL)) {
+        http_response_code(400);
+        echo '无效的URL';
+        exit;
     }
-    return substr($host, -strlen('.' . $currentHost)) === '.' . $currentHost;
-}
 
-$currentHost = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
-$currentHost = preg_replace('/:\d+$/', '', $currentHost);
+    $scheme = strtolower((string) parse_url($targetUrl, PHP_URL_SCHEME));
+    if ($scheme !== 'http' && $scheme !== 'https') {
+        http_response_code(400);
+        echo '无效的URL';
+        exit;
+    }
 
-if (!isset($_GET['url']) || empty($_GET['url'])) {
-    http_response_code(400);
-    echo '缺少url参数';
-    exit;
-}
+    // 防止响应头注入
+    $targetUrl = str_replace(array("\r", "\n"), '', $targetUrl);
 
-$targetUrl = $_GET['url'];
+    if (isInternalUrl($targetUrl, $currentHost)) {
+        header('Location: ' . $targetUrl);
+        exit;
+    }
 
-if (!filter_var($targetUrl, FILTER_VALIDATE_URL)) {
-    http_response_code(400);
-    echo '无效的URL';
-    exit;
-}
-
-$scheme = strtolower((string) parse_url($targetUrl, PHP_URL_SCHEME));
-if ($scheme !== 'http' && $scheme !== 'https') {
-    http_response_code(400);
-    echo '无效的URL';
-    exit;
-}
-
-// 防止响应头注入
-$targetUrl = str_replace(array("\r", "\n"), '', $targetUrl);
-
-if (isInternalUrl($targetUrl, $currentHost)) {
-    header('Location: ' . $targetUrl);
-    exit;
-}
-
-$safeUrl = htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8');
-$jsUrl = json_encode($targetUrl, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-if ($jsUrl === false) {
-    $jsUrl = '""';
-}
-?>
+    $safeUrl = htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8');
+    $jsUrl = json_encode($targetUrl, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    if ($jsUrl === false) {
+        $jsUrl = '""';
+    }
+    ?>
 <!DOCTYPE html>
 <html>
   <head>
@@ -128,3 +137,5 @@ a{text-decoration:none;}
     </div>
   </body>
 </html>
+    <?php
+}

@@ -386,7 +386,9 @@ a:hover { color: var(--accent-light); }
     align-items: center;
     padding: 18px 0;
     position: relative;
-    z-index: 100;
+    /* 必须高于 .search-area(120)：top-bar 会形成独立的层叠上下文，
+       否则内部的下拉面板再高的 z-index 也会被搜索栏盖住 */
+    z-index: 200;
 }
 
 .top-bar-left, .top-bar-right {
@@ -480,7 +482,10 @@ a:hover { color: var(--accent-light); }
     z-index: 200;
     white-space: nowrap;
 }
+/* 色板竖排：绝对定位的收缩宽度很窄，这里显式指定纵向排列，不依赖 flex-wrap 的副作用 */
 .palette-popover .color-options {
+    flex-direction: column;
+    flex-wrap: nowrap;
     gap: 6px;
     padding: 0;
 }

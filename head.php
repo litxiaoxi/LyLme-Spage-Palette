@@ -42,7 +42,7 @@ $brand_text = isset($title_parts[0]) ? trim($title_parts[0]) : '';
     <?php theme_js('js/script.js'); ?>
 </head>
 
-<body class="<?php echo checkmobile() ? 'is-mobile' : 'is-pc'; ?>">
+<body>
     <!-- 动态背景层 -->
     <div class="bg-layer"></div>
 
@@ -102,7 +102,8 @@ $brand_text = isset($title_parts[0]) ? trim($title_parts[0]) : '';
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                     </svg>
                 </button>
-                <!-- 更多菜单 -->
+                <!-- 更多菜单：快捷导航为空时不渲染，避免弹出空白浮层 -->
+                <?php if (!empty($tags)) : ?>
                 <div class="dropdown">
                     <button type="button" class="icon-btn" title="更多" aria-label="更多导航" aria-haspopup="true" aria-expanded="false">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
@@ -115,6 +116,7 @@ $brand_text = isset($title_parts[0]) ? trim($title_parts[0]) : '';
                         <?php endforeach; ?>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
         </header>
 
@@ -135,7 +137,7 @@ $brand_text = isset($title_parts[0]) ? trim($title_parts[0]) : '';
             <div class="search-area">
                 <form class="search-form" id="search-form" action="#">
                     <div class="search-wrapper">
-                        <div class="search-engine-switcher" id="engineSwitcher" title="选择搜索引擎" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="engineOptions">
+                        <div class="search-engine-switcher" id="engineSwitcher" title="选择搜索引擎" role="button" tabindex="0" aria-label="选择搜索引擎" aria-expanded="false" aria-controls="engineOptions">
                             <span class="engine-icon" id="engineIcon"></span>
                             <svg class="engine-arrow" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                                 <path d="M7 10l5 5 5-5z"/>
@@ -149,7 +151,7 @@ $brand_text = isset($title_parts[0]) ? trim($title_parts[0]) : '';
                             </svg>
                         </button>
                     </div>
-                    <div class="engine-options" id="engineOptions" role="listbox" aria-label="选择搜索引擎">
+                    <div class="engine-options" id="engineOptions" role="radiogroup" aria-label="选择搜索引擎">
                         <?php foreach ($sou_list as $index => $sou) : ?>
                         <label class="engine-option" title="<?php echo theme_e($sou['name']); ?>">
                             <input type="radio" name="sou"

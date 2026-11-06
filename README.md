@@ -60,7 +60,7 @@
 
 ## 安装说明
 
-> 当前版本：**1.3.5**（版本号见 `theme.ini` 的 `theme_version`）
+> 当前版本：**1.3.7**（版本号见 `theme.ini` 的 `theme_version`）
 
 ### 从 Release 安装（推荐）
 
@@ -90,7 +90,7 @@
 
 ### 切换背景
 
-点击 **图片图标** 循环切换背景模式（图片 → 视频 → 清除）。图片取自后台「背景设置」（PC / 手机自适应），视频地址在主题设置中配置；首次访问默认显示主题渐变，切换后会按浏览器记忆恢复。
+点击 **图片图标** 切换背景，仅在手动点击时生效：配置了视频地址时在 **视频 / 清除** 之间切换，未配置时在 **图片 / 清除** 之间切换。图片取自后台「背景设置」（PC / 手机自适应），视频地址在主题设置中配置；首次访问默认不显示图片或视频背景（仅主题渐变），切换后会按浏览器记忆恢复。
 
 ### 切换搜索引擎
 
@@ -131,7 +131,10 @@
 ### 添加自定义色彩
 
 1. 在 `css/style.css` 中添加新的 `[data-theme="yourcolor"]` 变量块
-2. 在 `head.php` 的 `.palette-popover` 中添加 `<span class="color-opt" data-color="yourcolor">`
+2. 在 `head.php` 的 `.palette-popover` 中按同样格式添加一个色块按钮（必须是 `button`，`span` 无法键盘聚焦）：
+   ```html
+   <button type="button" class="color-opt" data-color="yourcolor" title="你的色彩" aria-label="你的色彩"></button>
+   ```
 3. 在 `js/script.js` 的 `colors` 数组中添加 `'yourcolor'`
 
 ## 文件结构

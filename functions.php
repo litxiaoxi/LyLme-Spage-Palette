@@ -68,7 +68,7 @@ function theme_e($value)
 /**
  * 获取导航菜单
  *
- * @return array 每项含 id / name / link / blank（是否新窗口打开）
+ * @return array 每项含 name / link / blank（是否新窗口打开）
  */
 function theme_tags()
 {
@@ -77,7 +77,6 @@ function theme_tags()
     $result = $site->getTags();
     while ($row = $DB->fetch($result)) {
         $tags[] = array(
-            'id'    => $row['tag_id'],
             'name'  => $row['tag_name'],
             'link'  => $row['tag_link'],
             'blank' => ((int) $row['tag_target'] === 1),
@@ -90,19 +89,19 @@ function theme_tags()
  * 获取启用的搜索引擎
  * link 字段已按当前设备解析：移动端优先使用 sou_waplink
  *
- * @return array 每项含 alias / name / hint / icon / color / link
+ * @return array 每项含 alias / name / hint / icon / link
  */
 function theme_sou()
 {
     global $site, $DB;
     $list = array();
+    // 设备 UA 只在循环外解析一次
+    $is_mobile = checkmobile();
+    // SITE::getSou() 的 SQL 已按 sou_st = 1 过滤，无需在此重复判断
     $result = $site->getSou();
     while ($row = $DB->fetch($result)) {
-        if ((int) $row['sou_st'] !== 1) {
-            continue;
-        }
         $link = $row['sou_link'];
-        if (checkmobile() && !empty($row['sou_waplink'])) {
+        if ($is_mobile && !empty($row['sou_waplink'])) {
             $link = $row['sou_waplink'];
         }
         $list[] = array(
@@ -110,7 +109,6 @@ function theme_sou()
             'name'  => $row['sou_name'],
             'hint'  => $row['sou_hint'],
             'icon'  => $row['sou_icon'],
-            'color' => $row['sou_color'],
             'link'  => $link,
         );
     }
@@ -144,6 +142,11 @@ function theme_security_filing($record = 'gonganbei', $value = null)
     }
     preg_match_all('/\d+/', $record, $gab);
     $code = isset($gab[0][0]) ? $gab[0][0] : '';
+    // 提取不到备案编号时降级为纯文本，避免输出 recordcode= 空参数的无效外链
+    if ($code === '') {
+        echo '<span class="gonganbei">' . theme_e($record) . '</span>' . "\n";
+        return;
+    }
     echo '<a class="gonganbei" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode='
         . theme_e($code) . '" target="_blank" rel="nofollow noopener">'
         . theme_e($record) . '</a>' . "\n";

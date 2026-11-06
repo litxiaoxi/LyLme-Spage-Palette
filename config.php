@@ -14,7 +14,7 @@ $theme_config = array(
         'type' => 'text',
         'name' => 'background_video',
         'title' => '背景视频地址',
-        'description' => '视频背景的 URL，留空则背景切换时跳过视频，仅使用图片背景。支持 MP4 格式',
+        'description' => '视频背景的 URL，留空则背景切换仅使用图片背景；填写后仅使用视频背景，顶部背景按钮在「视频 / 无背景」间切换。支持 MP4 格式',
         'value' => '',
         'placeholder' => 'https://example.com/video.mp4',
     ),
