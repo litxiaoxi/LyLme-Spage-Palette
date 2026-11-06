@@ -64,7 +64,7 @@
 
 ### 从 Release 安装（推荐）
 
-1. 打开 [Releases](https://github.com/litxiaoxi/LyLme-Spage---Palette/releases) 下载最新版 `Palette-x.y.z.zip`
+1. 打开 [Releases](https://github.com/litxiaoxi/LyLme-Spage-Palette/releases) 下载最新版 `Palette-x.y.z.zip`
 2. 解压得到 `palette/` 文件夹，整个放入 `lylme_spage/template/` 目录
 3. 登录后台 → 主题设置 → 选择 "Palette" → 点击使用
 
